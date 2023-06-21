@@ -1,0 +1,10 @@
+bin
+include
+lib
+.Python
+tests/
+.envrc
+__pycache__
+.vscode
+pipfile*
+.env
