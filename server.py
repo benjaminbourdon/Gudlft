@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from flask import Flask,render_template,request,redirect,flash,url_for
 
 MAX_PLACES_PER_CLUB = 12
@@ -30,6 +31,9 @@ def index():
 def showSummary():
     email = request.form['email']
     club = next((club for club in clubs if club['email'] == email), None)
+    for competition in competitions:
+        competition["in_future"] = (datetime.fromisoformat(competition["date"]) >= datetime.now())
+        
     if club :
         return render_template('welcome.html',club=club,competitions=competitions)
     else :
@@ -42,7 +46,7 @@ def showSummary():
 def book(competition,club):
     foundClub = [c for c in clubs if c['name'] == club][0]
     foundCompetition = [c for c in competitions if c['name'] == competition][0]
-    if foundClub and foundCompetition:
+    if foundClub and foundCompetition and (datetime.fromisoformat(foundCompetition["date"]) > datetime.now()):
         nbPlacesAlreadyBooked = bookedPlaces[foundClub["name"]].get(foundCompetition["name"]) or 0
         max_places = min(int(foundClub['points']), int(foundCompetition['numberOfPlaces']), MAX_PLACES_PER_CLUB-int(nbPlacesAlreadyBooked))
         return render_template('booking.html',club=foundClub,competition=foundCompetition, max_places=max_places)
@@ -57,7 +61,9 @@ def purchasePlaces():
     club = [c for c in clubs if c['name'] == request.form['club']][0]
     nbPlacesAlreadyBooked = bookedPlaces[club["name"]].setdefault(competition["name"], 0)
     placesRequired = int(request.form['places'])
-    if placesRequired < 0 or placesRequired > min(int(club['points']), int(competition['numberOfPlaces']), MAX_PLACES_PER_CLUB-int(nbPlacesAlreadyBooked)):
+    if datetime.fromisoformat(competition["date"]) < datetime.now():
+        flash(f"Competition has already started.")
+    elif placesRequired < 0 or placesRequired > min(int(club['points']), int(competition['numberOfPlaces']), MAX_PLACES_PER_CLUB-int(nbPlacesAlreadyBooked)):
         flash(f"Number of places required ({placesRequired}) is wrong, please try again")
     else:
         competition['numberOfPlaces'] = int(competition['numberOfPlaces'])-placesRequired
